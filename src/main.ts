@@ -1,16 +1,31 @@
 import log4js from 'log4js';
-import dotenv from 'dotenv';
 import { Client, Intents } from 'discord.js';
 import type { Message } from 'discord.js';
 
 import { registerCommands } from './pong';
+import { readEnv } from './helpers';
 
 //Read env variables from .env
-dotenv.config();
+export const { token, guildId, clientId, enableDebug } = readEnv();
 
 //Configure logger
-export const logger = log4js.getLogger('BotLogger');
+const loggerConfiguration = {
+  appenders: {
+    out: {
+      type: 'stdout',
+      layout: {
+        type: 'pattern',
+        pattern: '[%[%p%]]%[ %d{dd/MM/yyy hh:mm:ss} (%f{2})%] %m%n',
+      },
+    },
+  },
+  categories: { default: { appenders: ['out'], level: 'warning', enableCallStack: true } },
+};
+if (enableDebug === 'true') loggerConfiguration.categories.default.level = 'trace';
+log4js.configure(loggerConfiguration);
+const logger = log4js.getLogger();
 logger.level = process.env.LOGGER_LEVEL ?? 'warning';
+logger.info('testing');
 
 //Discord client setup
 const bot_intents = [
@@ -30,18 +45,6 @@ export const client = new Client({
 client.once('ready', () => logger.info('Bot is online'));
 client.on('messageCreate', (msg: Message) => logger.trace(`MessageCreated: ${JSON.stringify(msg.toJSON())}`));
 
-//Reading enviroment variables
-export const clientId = process.env.CLIENT_ID ?? '';
-export const guildId = process.env.GUILD_ID ?? '';
-export const token = process.env.DISCORD_TOKEN ?? '';
-
-Object.entries({ token, guildId, clientId }).forEach(([key, value]: [string, string]) => {
-  if (!value) {
-    logger.fatal(`${key.toUpperCase()} is not specified in enviroment exitting`);
-    process.exit(-1);
-  }
-});
-
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
@@ -56,5 +59,5 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-registerCommands(token);
+registerCommands(readEnv());
 client.login(token);

@@ -1,8 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
+import { getLogger } from 'log4js';
 
-import { logger, token, clientId, guildId } from './main';
+import type { EnvVars } from '../types/types';
 
 const commands = [
   new SlashCommandBuilder().setName('ping').setDescription('Replies with pong!'),
@@ -10,7 +11,9 @@ const commands = [
   new SlashCommandBuilder().setName('user').setDescription('Replies with user info!'),
 ].map((command) => command.toJSON());
 
-export const registerCommands = async (token: string) => {
+export const registerCommands = async ({ token, clientId, guildId }: EnvVars) => {
+  const logger = getLogger();
+
   const rest = new REST({ version: '9' }).setToken(token);
   try {
     await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
