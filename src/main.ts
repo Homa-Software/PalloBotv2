@@ -3,6 +3,7 @@ import { Client, Intents } from 'discord.js';
 import type { Message } from 'discord.js';
 
 import { registerCommands } from './pong';
+import { loadSlashCommands } from './slashCommandHandler';
 import { readEnv } from './helpers';
 
 //Read env variables from .env
@@ -42,8 +43,10 @@ export const client = new Client({
   intents: bot_intents,
 });
 
+loadSlashCommands(client);
+
 client.once('ready', () => logger.info('Bot is online'));
-client.on('messageCreate', (msg: Message) => logger.trace(`MessageCreated: ${JSON.stringify(msg.toJSON())}`));
+client.on('messageCreate', (msg: Message) => logger.trace(`MessageCreated: ${JSON.stringify(msg)}`));
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
