@@ -15,6 +15,27 @@ type CreationParams = {
   guildId: string;
 };
 
+const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
+  const logger = getLogger();
+  logger.info(`Loading data from directory '${dirname}'`);
+  const dirName = path.resolve(__dirname, dirname);
+  const commandFiles = fs.readdirSync(dirName).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+
+  const data: T[] = [];
+
+  for (const file of commandFiles) {
+    const filePath = path.resolve(dirName, file);
+
+    //Importing file as a module
+    const module: any = await import(filePath);
+    const moduleData: T = module.default;
+    logger.info(`Loaded following data from module ${file} \n ${JSON.stringify(moduleData, null, 2)}`);
+    data.push(module.default);
+  }
+
+  return data;
+};
+
 export class BotClient extends Client {
   private static _instance: BotClient | null = null;
 
@@ -47,28 +68,15 @@ export class BotClient extends Client {
   private async loadSlashCommands() {
     const logger = this.logger;
 
-    //Reading files from slashCommands/*
-    const dirName = path.resolve(__dirname, 'slashCommands');
-    logger.info(`Scanning for files with slash command in '${dirName}''`);
-    const commandFiles = fs.readdirSync(dirName).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+    logger.info(`Loading SlashCommands`);
 
-    //Resolve each file with slash command
-    for (const file of commandFiles) {
-      logger.info(`Found slash command file '${file}'`);
-      const filePath = path.resolve(dirName, file);
-
-      //Importing file as a module
-      const module = await import(filePath);
-
-      logger.info(`Loading command ${JSON.stringify(module.default, null, 2)}`);
-      this.commands.set(module.default.data.name, module.default);
-    }
-
-    //Construct SlashCommand objects
+    const commandsData: BotSlashCommand[] = await loadDataFromModules('slashCommands');
     const commands: SlashCommandBuilder[] = [];
-    this.commands.forEach((command) => {
+    for (const command of commandsData) {
+      logger.info(`Registering command '${command.data.name}'`);
+      this.commands.set(command.data.name, command);
       commands.push(command.data);
-    });
+    }
 
     const rest = new REST({ version: '9' }).setToken(this._token);
 
@@ -105,28 +113,17 @@ export class BotClient extends Client {
 
   private async loadEvents() {
     const logger = this.logger;
+    logger.info(`Loading events`);
 
-    //Reading files from events/*
-    const dirName = path.resolve(__dirname, 'events');
-    logger.info(`Scanning for files with events in '${dirName}''`);
-    const eventFiles = fs.readdirSync(dirName).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+    const eventData: BotEvent[] = await loadDataFromModules('events');
+    for (const event of eventData) {
+      logger.info(`Loading event '${event.name}'`);
+      this.events.set(event.name, event);
 
-    for (const file of eventFiles) {
-      logger.info(`Found event file '${file}'`);
-      const filePath = path.resolve(dirName, file);
-
-      const module = await import(filePath);
-      const eventData: BotEvent = module.default;
-      const eventName = eventData.name;
-
-      logger.info(`Loading event ${JSON.stringify(eventData, null, 2)}`);
-
-      this.events.set(eventName, eventData);
-
-      if (eventData.once) {
-        this.once(eventData.name, (...args) => eventData.run(...args));
+      if (event.once) {
+        this.once(event.name, (...args) => event.run(...args));
       } else {
-        this.on(eventData.name, (...args) => eventData.run(...args));
+        this.on(event.name, (...args) => event.run(...args));
       }
     }
   }

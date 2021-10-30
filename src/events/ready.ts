@@ -6,7 +6,7 @@ const ready: BotEvent = {
   once: true,
   run: () => {
     const logger = getLogger();
-    logger.info('Bot is ready!');
+    logger.warn('Bot is ready!');
   },
 };
 

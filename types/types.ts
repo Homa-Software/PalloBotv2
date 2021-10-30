@@ -1,4 +1,4 @@
-import type { CommandInteraction } from 'discord.js';
+import type { CommandInteraction, Message } from 'discord.js';
 import type { SlashCommandBuilder } from '@discordjs/builders';
 
 export type EnvVars = {
@@ -17,4 +17,9 @@ export type BotEvent = {
   name: string;
   once: boolean;
   run: <T>(...params: T[]) => void;
+};
+
+export type BotNoPrefixCommand = {
+  name: string;
+  run: (arg0: Message) => void;
 };
