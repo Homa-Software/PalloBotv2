@@ -10,16 +10,16 @@ export type EnvVars = {
 
 export type BotSlashCommand = {
   data: SlashCommandBuilder;
-  run: (arg0: CommandInteraction) => void;
+  run: (arg0: CommandInteraction) => Promise<void>;
 };
 
 export type BotEvent = {
   name: string;
   once: boolean;
-  run: <T>(...params: T[]) => void;
+  run: <T>(...params: T[]) => Promise<void>;
 };
 
 export type BotNoPrefixCommand = {
   name: string;
-  run: (arg0: Message) => void;
+  run: (arg0: Message) => Promise<void>;
 };

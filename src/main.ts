@@ -26,7 +26,7 @@ const logger = log4js.getLogger();
 logger.level = process.env.LOGGER_LEVEL ?? 'warning';
 
 //Discord client setup
-const bot_intents = [Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.GUILDS];
+const bot_intents = [Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES];
 BotClient.setIntents(bot_intents);
 
 const client = BotClient.getClient();

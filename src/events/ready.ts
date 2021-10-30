@@ -4,7 +4,7 @@ import type { BotEvent } from '../../types/types';
 const ready: BotEvent = {
   name: 'ready',
   once: true,
-  run: () => {
+  run: async () => {
     const logger = getLogger();
     logger.warn('Bot is ready!');
   },

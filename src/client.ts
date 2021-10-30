@@ -7,7 +7,7 @@ import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import type { SlashCommandBuilder } from '@discordjs/builders';
 
-import type { BotSlashCommand, BotEvent } from '../types/types';
+import type { BotSlashCommand, BotEvent, BotNoPrefixCommand } from '../types/types';
 
 type CreationParams = {
   token: string;
@@ -22,8 +22,8 @@ type CreationParams = {
  */
 const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
   const logger = getLogger();
-  logger.info(`Loading data from directory '${dirname}'`);
   const dirName = path.resolve(__dirname, dirname);
+  logger.info(`Loading modules from directory '${path.relative(path.resolve(__dirname, '..'), dirName)}'`);
   const commandFiles = fs.readdirSync(dirName).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
 
   const data: T[] = [];
@@ -34,7 +34,12 @@ const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
     //Importing file as a module
     const module: any = await import(filePath);
     const moduleData: T = module.default;
-    logger.info(`Loaded following data from module ${file} \n ${JSON.stringify(moduleData, null, 2)}`);
+    logger.info(
+      `Loaded following data from module '${path.relative(
+        path.resolve(__dirname, '..'),
+        filePath,
+      )}' \n ${JSON.stringify(moduleData, null, 2)}`,
+    );
     data.push(module.default);
   }
 
@@ -42,6 +47,8 @@ const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
 };
 
 export class BotClient extends Client {
+  public logger = getLogger();
+
   private static _instance: BotClient | null = null;
 
   private static _intents: number[] = [];
@@ -51,7 +58,7 @@ export class BotClient extends Client {
 
   private commands = new Collection<string, BotSlashCommand>();
   private events = new Collection<string, BotEvent>();
-  public logger = getLogger();
+  private noPrefixCommands = new Collection<string, BotNoPrefixCommand>();
 
   /**
    * Constructs new BotClient object, this class is a singleton and only
@@ -65,6 +72,7 @@ export class BotClient extends Client {
     ({ token: this._token, clientId: this._clientId, guildId: this._guildId } = params);
     this.loadEvents();
     this.loadSlashCommands();
+    this.loadNoPrefixCommands();
   }
 
   /**
@@ -129,11 +137,32 @@ export class BotClient extends Client {
       this.events.set(event.name, event);
 
       if (event.once) {
-        this.once(event.name, (...args) => event.run(...args));
+        this.once(event.name, async (...args) => event.run(...args));
       } else {
-        this.on(event.name, (...args) => event.run(...args));
+        this.on(event.name, async (...args) => event.run(...args));
       }
     }
+  }
+
+  private async loadNoPrefixCommands() {
+    const logger = this.logger;
+    logger.info(`Loading no prefix commands`);
+
+    const commandsData: BotNoPrefixCommand[] = await loadDataFromModules('noPrefixCommands');
+
+    for (const command of commandsData) {
+      this.noPrefixCommands.set(command.name, command);
+    }
+
+    this.on('messageCreate', async (message) => {
+      const content = message.content.toLowerCase();
+      this.noPrefixCommands.forEach(({ name, run }) => {
+        if (content.includes(name.toLowerCase())) {
+          logger.info(`Executing no prefix command '${name}' in guild '${message.guildId}'`);
+          run(message);
+        }
+      });
+    });
   }
 
   /**
