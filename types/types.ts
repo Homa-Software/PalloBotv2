@@ -12,3 +12,9 @@ export type BotSlashCommand = {
   data: SlashCommandBuilder;
   run: (arg0: CommandInteraction) => void;
 };
+
+export type BotEvent = {
+  name: string;
+  once: boolean;
+  run: <T>(...params: T[]) => void;
+};

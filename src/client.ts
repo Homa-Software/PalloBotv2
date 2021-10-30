@@ -7,7 +7,7 @@ import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import type { SlashCommandBuilder } from '@discordjs/builders';
 
-import type { BotSlashCommand } from '../types/types';
+import type { BotSlashCommand, BotEvent } from '../types/types';
 
 type CreationParams = {
   token: string;
@@ -24,6 +24,7 @@ export class BotClient extends Client {
   private _guildId: string = '';
 
   private commands = new Collection<string, BotSlashCommand>();
+  private events = new Collection<string, BotEvent>();
   public logger = getLogger();
 
   /**
@@ -36,6 +37,7 @@ export class BotClient extends Client {
     this.logger.info('Creating new BotClient instance');
 
     ({ token: this._token, clientId: this._clientId, guildId: this._guildId } = params);
+    this.loadEvents();
     this.loadSlashCommands();
   }
 
@@ -88,6 +90,7 @@ export class BotClient extends Client {
       const command = this.commands.get(interaction.commandName);
       if (!command) return;
 
+      logger.info(`Dispaching slashcommand '${interaction.commandName} in guild '${interaction.guildId}'`);
       try {
         await command.run(interaction);
       } catch (error) {
@@ -98,6 +101,34 @@ export class BotClient extends Client {
         });
       }
     });
+  }
+
+  private async loadEvents() {
+    const logger = this.logger;
+
+    //Reading files from events/*
+    const dirName = path.resolve(__dirname, 'events');
+    logger.info(`Scanning for files with events in '${dirName}''`);
+    const eventFiles = fs.readdirSync(dirName).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+
+    for (const file of eventFiles) {
+      logger.info(`Found event file '${file}'`);
+      const filePath = path.resolve(dirName, file);
+
+      const module = await import(filePath);
+      const eventData: BotEvent = module.default;
+      const eventName = eventData.name;
+
+      logger.info(`Loading event ${JSON.stringify(eventData, null, 2)}`);
+
+      this.events.set(eventName, eventData);
+
+      if (eventData.once) {
+        this.once(eventData.name, (...args) => eventData.run(...args));
+      } else {
+        this.on(eventData.name, (...args) => eventData.run(...args));
+      }
+    }
   }
 
   public override login() {

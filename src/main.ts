@@ -31,6 +31,4 @@ const bot_intents = [Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.GUILDS];
 BotClient.setIntents(bot_intents);
 
 const client = BotClient.getClient();
-client.once('ready', () => logger.info('Bot is online'));
-
 client.login();
