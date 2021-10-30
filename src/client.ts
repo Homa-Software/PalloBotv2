@@ -15,6 +15,11 @@ type CreationParams = {
   guildId: string;
 };
 
+/**
+ * Loads default export from all .js .ts files in given directory as a given generic type
+ * @param dirname Directory name from which to load module data
+ * @returns  Promise of given generic type
+ */
 const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
   const logger = getLogger();
   logger.info(`Loading data from directory '${dirname}'`);
@@ -98,7 +103,7 @@ export class BotClient extends Client {
       const command = this.commands.get(interaction.commandName);
       if (!command) return;
 
-      logger.info(`Dispaching slashcommand '${interaction.commandName} in guild '${interaction.guildId}'`);
+      logger.info(`Dispaching slashcommand '${interaction.commandName}' in guild '${interaction.guildId}'`);
       try {
         await command.run(interaction);
       } catch (error) {
@@ -111,6 +116,9 @@ export class BotClient extends Client {
     });
   }
 
+  /**
+   * Loads and register event handlers
+   */
   private async loadEvents() {
     const logger = this.logger;
     logger.info(`Loading events`);
@@ -128,6 +136,10 @@ export class BotClient extends Client {
     }
   }
 
+  /**
+   * Logins application to discord API
+   * @returns Promise<string> discord secret token
+   */
   public override login() {
     return super.login(this._token);
   }
@@ -161,10 +173,18 @@ export class BotClient extends Client {
     return this._token;
   }
 
+  /**
+   * Client id getter
+   * @returns client id
+   */
   public getClientId(): string {
     return this._clientId;
   }
 
+  /**
+   * Guild id getter
+   * @returns guild id
+   */
   public getGuildId(): string {
     return this._guildId;
   }
