@@ -1,8 +1,6 @@
 import log4js from 'log4js';
 import { Client, Intents } from 'discord.js';
-import type { Message } from 'discord.js';
 
-import { registerCommands } from './pong';
 import { loadSlashCommands } from './slashCommandHandler';
 import { readEnv } from './helpers';
 
@@ -46,21 +44,5 @@ export const client = new Client({
 loadSlashCommands(client);
 
 client.once('ready', () => logger.info('Bot is online'));
-client.on('messageCreate', (msg: Message) => logger.trace(`MessageCreated: ${JSON.stringify(msg)}`));
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
-
-  const { commandName } = interaction;
-
-  if (commandName === 'ping') {
-    await interaction.reply('Pong!');
-  } else if (commandName === 'server') {
-    await interaction.reply('Server info.');
-  } else if (commandName === 'user') {
-    await interaction.reply('User info.');
-  }
-});
-
-registerCommands(readEnv());
 client.login(token);
