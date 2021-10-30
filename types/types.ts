@@ -6,6 +6,9 @@ export type EnvVars = {
   guildId: string;
   clientId: string;
   enableDebug: string;
+  mongoUser: string;
+  mongoPass: string;
+  mongoUrl: string;
 };
 
 export type BotSlashCommand = {

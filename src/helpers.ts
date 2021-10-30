@@ -10,12 +10,18 @@ export const readEnv: () => EnvVars = () => {
   const guildId = process.env.GUILD_ID ?? '';
   const token = process.env.DISCORD_TOKEN ?? '';
   const enableDebug = process.env.ENABLE_DEBUG ?? 'false';
+  const mongoUser = process.env.MONGODB_USER ?? '';
+  const mongoPass = process.env.MONGODB_PASS ?? '';
+  const mongoUrl = process.env.MONGODB_URL ?? '';
 
   const all: EnvVars = {
     token,
     guildId,
     clientId,
     enableDebug,
+    mongoUser,
+    mongoPass,
+    mongoUrl,
   };
 
   Object.entries(all).forEach(([key, value]: [string, string]) => {

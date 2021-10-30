@@ -5,7 +5,7 @@ import { BotClient } from './client';
 import { readEnv } from './helpers';
 
 //Read env variables from .env
-const { enableDebug } = readEnv();
+const { enableDebug, mongoPass, mongoUrl, mongoUser } = readEnv();
 
 //Configure logger
 const loggerConfiguration = {
@@ -31,3 +31,17 @@ BotClient.setIntents(bot_intents);
 
 const client = BotClient.getClient();
 client.login();
+
+//tests
+// import mongoose from 'mongoose';
+
+// const test_db = async () => {
+//   const dbConnection = await mongoose.connect(mongoUrl, {
+//     user: mongoUser,
+//     pass: mongoUser,
+//   });
+
+//   const MyModel = mongoose.model('Test', new mongoose.Schema({ name: String }));
+// };
+
+//test_db().catch((err) => logger.error(err));

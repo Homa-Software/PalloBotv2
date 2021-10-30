@@ -20,7 +20,8 @@
     "discord-api-types": "^0.24.0",
     "discord.js": "^13.3.0",
     "dotenv": "^10.0.0",
-    "log4js": "^6.3.0"
+    "log4js": "^6.3.0",
+    "mongoose": "^6.0.12"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.2",
