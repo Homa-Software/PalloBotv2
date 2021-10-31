@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev src/main.ts",
     "build": "tsc",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "docker-dev": "docker-compose -f docker-compose.dev.yml up --force-recreate"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"

@@ -1,15 +1,40 @@
 import mongoose from 'mongoose';
 
-interface ActivityChildUsersType extends mongoose.Document {
+export interface ActivityChildUsersType {
   _id: string;
+  userName: string;
   sendMessages: number;
   xp: number;
   voiceSeconds: number;
 }
 
-interface ActivityType extends mongoose.Document {
+const ActivityChildUsersSchema = new mongoose.Schema<ActivityChildUsersType>({
+  _id: {
+    type: String,
+    require: true,
+  },
+  userName: {
+    type: String,
+    required: true,
+  },
+  sendMessages: {
+    type: Number,
+    require: true,
+  },
+  xp: {
+    type: Number,
+    require: true,
+  },
+  voiceSeconds: {
+    type: Number,
+    required: true,
+  },
+});
+
+interface ActivityType {
   _id: string;
-  users: mongoose.Types.DocumentArray<ActivityChildUsersType>;
+  guildName: string;
+  users: ActivityChildUsersType[];
 }
 
 const ActivityGuildSchema = new mongoose.Schema<ActivityType>({
@@ -17,26 +42,11 @@ const ActivityGuildSchema = new mongoose.Schema<ActivityType>({
     type: String,
     required: true,
   },
-  users: [
-    {
-      sendMessages: {
-        type: Number,
-        require: true,
-      },
-      userId: {
-        type: String,
-        require: true,
-      },
-      xp: {
-        type: Number,
-        require: true,
-      },
-      voiceSeconds: {
-        type: Number,
-        required: true,
-      },
-    },
-  ],
+  guildName: {
+    type: String,
+    required: true,
+  },
+  users: [ActivityChildUsersSchema],
 });
 
 export const ActivityGuildModel = mongoose.model('activity', ActivityGuildSchema);

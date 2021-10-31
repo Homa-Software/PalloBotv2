@@ -41,6 +41,8 @@ export const retriveMessageInfo = (message: Message): MessageInfo => {
   const userId = message.author.id;
   const { channelId } = message;
 
+  const isBot = message.author.bot;
+
   const guildId = message.guildId ? message.guildId : undefined;
 
   const isOwnMessage = userId === (client.user?.id ?? '') ? true : false;
@@ -54,6 +56,7 @@ export const retriveMessageInfo = (message: Message): MessageInfo => {
 
   return {
     isOwnMessage,
+    isBot,
     isDirectMessage,
     isGuildMessage,
     userId,

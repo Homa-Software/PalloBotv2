@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:focal
+    container_name: pallobot_mongodb
+    ports:
+      - '27017:27017'
+    env_file:
+      - '.env'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:?err}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASS:?err}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE_NAME:?err}
+    volumes:
+      - type: bind
+        source: ./db
+        target: /data/db

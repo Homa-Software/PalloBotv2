@@ -29,6 +29,7 @@ export type BotNoPrefixCommand = {
 
 export interface MessageInfo {
   isOwnMessage: boolean;
+  isBot: boolean;
   isDirectMessage: boolean;
   isGuildMessage: boolean;
   userId: string;
