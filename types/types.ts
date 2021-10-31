@@ -1,4 +1,4 @@
-import type { CommandInteraction, Message } from 'discord.js';
+import type { CommandInteraction, Message, ClientEvents } from 'discord.js';
 import type { SlashCommandBuilder } from '@discordjs/builders';
 
 export type EnvVars = {
@@ -17,12 +17,24 @@ export type BotSlashCommand = {
 };
 
 export type BotEvent = {
-  name: string;
+  name: keyof ClientEvents;
   once: boolean;
-  run: <T>(...params: T[]) => Promise<void>;
+  run: Function;
 };
 
 export type BotNoPrefixCommand = {
   name: string;
   run: (arg0: Message) => Promise<void>;
 };
+
+export interface MessageInfo {
+  isOwnMessage: boolean;
+  isDirectMessage: boolean;
+  isGuildMessage: boolean;
+  userId: string;
+  channelId: string;
+  channelName?: string;
+  userName: string;
+  guildName?: string;
+  guildId?: string;
+}

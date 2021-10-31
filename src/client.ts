@@ -5,6 +5,7 @@ import { getLogger } from 'log4js';
 import { readEnv } from './helpers';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
+import db from 'mongoose';
 import type { SlashCommandBuilder } from '@discordjs/builders';
 
 import type { BotSlashCommand, BotEvent, BotNoPrefixCommand } from '../types/types';
@@ -70,9 +71,30 @@ export class BotClient extends Client {
     this.logger.info('Creating new BotClient instance');
 
     ({ token: this._token, clientId: this._clientId, guildId: this._guildId } = params);
-    this.loadEvents();
-    this.loadSlashCommands();
-    this.loadNoPrefixCommands();
+
+    this.initializeMongo().then(() => {
+      this.loadEvents();
+      this.loadSlashCommands();
+      this.loadNoPrefixCommands();
+    });
+  }
+
+  private async initializeMongo() {
+    const logger = this.logger;
+
+    const { mongoPass, mongoUrl, mongoUser } = readEnv();
+
+    try {
+      logger.warn('Connecting to database');
+      await db.connect(mongoUrl, {
+        user: mongoUser,
+        pass: mongoPass,
+      });
+      logger.warn('Database connection successful');
+    } catch (error) {
+      logger.fatal('Database connection failed!', error);
+      process.exit(-1);
+    }
   }
 
   /**
