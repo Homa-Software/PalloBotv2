@@ -32,15 +32,17 @@ const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
   for (const file of commandFiles) {
     const filePath = path.resolve(dirName, file);
 
+    //Logger helpers
+    const pathOfModule = path.relative(path.resolve(__dirname, '..'), filePath);
     //Importing file as a module
     const module: any = await import(filePath);
+    //Sanity check if module defines default attribute
+    if (Object.keys(module.default).length === 0) {
+      logger.error(`Module '${pathOfModule}' could not be loaded beacause it does not define default export'`);
+      continue;
+    }
     const moduleData: T = module.default;
-    logger.info(
-      `Loaded following data from module '${path.relative(
-        path.resolve(__dirname, '..'),
-        filePath,
-      )}' \n ${JSON.stringify(moduleData, null, 2)}`,
-    );
+    logger.info(`Loaded following data from module '${pathOfModule}' \n ${JSON.stringify(moduleData, null, 2)}`);
     data.push(module.default);
   }
 
@@ -57,7 +59,7 @@ export class BotClient extends Client {
   private _clientId: string = '';
   private _guildId: string = '';
 
-  private commands = new Collection<string, BotSlashCommand>();
+  public readonly commands = new Collection<string, BotSlashCommand>();
   private events = new Collection<string, BotEvent>();
   private noPrefixCommands = new Collection<string, BotNoPrefixCommand>();
 

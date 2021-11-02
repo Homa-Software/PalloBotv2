@@ -10,6 +10,18 @@ import type { MessageInfo } from '../types/types';
 const logger = getLogger();
 
 /**
+ * Event handler used in events/activity.ts
+ * @param message message that triggered event handler
+ * @returns Promise<void>
+ */
+export const messageActivityEventHandler = async (message: Message) => {
+  const { isOwnMessage, isDirectMessage, isBot } = retriveMessageInfo(message);
+  if (isOwnMessage || isDirectMessage || isBot) return;
+
+  updateActivityMessages(message);
+};
+
+/**
  * Updates User Activity Score object and creates one if passed null
  * this function does not interact with a database
  * @param oldRecord old Record from database if null than new record will be constructed
@@ -148,4 +160,79 @@ export const updateActivityMessages = async (message: Message) => {
   registered.timestamp = timeNow;
   await updateActivityMessagesNoCheck(message);
   return;
+};
+
+type LevelInfo = {
+  currentLevel: number;
+  levelFill: number;
+  nextLevelXp: number;
+};
+/**
+ * Given the xp amount this function returns the correct level information for the user
+ * @param xp xp used for the level info calculations
+ * @returns LevelInfo object that represents mapping from xp to user printable data
+ */
+const xpToLevelInfoMapping = (xp: number): LevelInfo => {
+  const multiplier = 2.2;
+  /*
+  Math stuff
+  
+  our sequence: {100, 220, 484}
+  q = 2,2 - multiplayer
+  n - the level
+  
+  a1 = 100
+  A(N) - user xp: exp
+  exp = a1*q^(n-1)
+  n = logq(exp/a1)+1
+  */
+  const expression = Math.log(xp / 100) / Math.log(multiplier) + 1;
+  const levelRaw = expression < 0 ? 0 : expression;
+  const currentLevel = Math.floor(levelRaw);
+
+  const currLevelXp = currentLevel === 0 ? 0 : 100 * Math.pow(multiplier, currentLevel - 1);
+  const nextLevelXp = 100 * Math.pow(multiplier, currentLevel);
+
+  const levelFill = Math.round(((xp - currLevelXp) / (nextLevelXp - currLevelXp)) * 100) / 100;
+
+  return { currentLevel, levelFill, nextLevelXp };
+};
+
+type UserActivityOverview = {
+  userName: string;
+  userId: string;
+} & LevelInfo;
+
+export const genearteActivityOverviewForUser = async (guildId: string, userId: string) => {
+  //Perform Databse lookup
+  // const queryResult = await ActivityGuildModel.findOne(
+  //   {
+  //     $and: [{ _id: guildId }, { 'users._id': userId }],
+  //   },
+  //   { users: { $elemMatch: { _id: userId } } },
+  // );
+
+  // const queryResult = await ActivityGuildModel.aggregate([
+  //   { $unwind: '$users' },
+  //   { $match: { $and: [{ _id: guildId }, { 'users._id': userId }] } },
+  //   { $project: { _id: 0, users: 1 } },
+  //   { $unwind: '$users' },
+  // ]);
+  // const queryResult = await ActivityGuildModel.aggregate([
+  //   { $match: { _id: guildId } },
+  //   { $unwind: '$users' },
+  //   { $match: { 'users._id': userId } },
+  //   {  },
+  // ]);
+
+  const queryResult = await ActivityGuildModel.findOne(
+    {
+      $and: [{ _id: guildId }, { 'users._id': userId }],
+    },
+    { 'users.$': 1 },
+  );
+
+  const user = queryResult?.users;
+  logger.fatal(queryResult);
+  // logger.fatal(user?.find((el) => el._id == userId));
 };

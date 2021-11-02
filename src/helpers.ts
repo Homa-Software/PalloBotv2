@@ -45,9 +45,9 @@ export const retriveMessageInfo = (message: Message): MessageInfo => {
 
   const guildId = message.guildId ? message.guildId : undefined;
 
-  const isOwnMessage = userId === (client.user?.id ?? '') ? true : false;
-  const isDirectMessage = message.guildId === null ? true : false;
-  const isGuildMessage = message.guildId === null ? false : true;
+  const isOwnMessage = userId === (client.user?.id ?? '');
+  const isDirectMessage = message.guildId === null;
+  const isGuildMessage = message.guildId === null;
 
   const channelName = guildId ? client.guilds.cache.get(guildId)?.channels.cache.get(channelId)?.name : undefined;
 
