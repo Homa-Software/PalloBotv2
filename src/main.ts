@@ -33,4 +33,4 @@ BotClient.setIntents(bot_intents);
 const client = BotClient.getClient();
 client.login();
 
-genearteActivityOverviewForUser('', '');
+genearteActivityOverviewForUser('792497879175397456', '393123191159128085');

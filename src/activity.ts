@@ -205,26 +205,6 @@ type UserActivityOverview = {
 
 export const genearteActivityOverviewForUser = async (guildId: string, userId: string) => {
   //Perform Databse lookup
-  // const queryResult = await ActivityGuildModel.findOne(
-  //   {
-  //     $and: [{ _id: guildId }, { 'users._id': userId }],
-  //   },
-  //   { users: { $elemMatch: { _id: userId } } },
-  // );
-
-  // const queryResult = await ActivityGuildModel.aggregate([
-  //   { $unwind: '$users' },
-  //   { $match: { $and: [{ _id: guildId }, { 'users._id': userId }] } },
-  //   { $project: { _id: 0, users: 1 } },
-  //   { $unwind: '$users' },
-  // ]);
-  // const queryResult = await ActivityGuildModel.aggregate([
-  //   { $match: { _id: guildId } },
-  //   { $unwind: '$users' },
-  //   { $match: { 'users._id': userId } },
-  //   {  },
-  // ]);
-
   const queryResult = await ActivityGuildModel.findOne(
     {
       $and: [{ _id: guildId }, { 'users._id': userId }],
@@ -232,7 +212,21 @@ export const genearteActivityOverviewForUser = async (guildId: string, userId: s
     { 'users.$': 1 },
   );
 
-  const user = queryResult?.users;
-  logger.fatal(queryResult);
-  // logger.fatal(user?.find((el) => el._id == userId));
+  if (!queryResult) {
+    logger.error(`Query for userId: ${userId} in guildId: ${guildId} failed!`);
+    return undefined;
+  }
+
+  const { userName, xp } = queryResult.users[0];
+  const { currentLevel, levelFill, nextLevelXp } = xpToLevelInfoMapping(xp);
+
+  const overview: UserActivityOverview = {
+    userName,
+    currentLevel,
+    levelFill,
+    nextLevelXp,
+    userId,
+  };
+
+  return overview;
 };
