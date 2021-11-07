@@ -11,7 +11,6 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:?err}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASS:?err}
-      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE_NAME:?err}
     volumes:
       - type: bind
         source: ./db
