@@ -1,9 +1,10 @@
 import { getLogger } from 'log4js';
+import mongoose from 'mongoose';
 import type { Message } from 'discord.js';
 
 import { retriveMessageInfo } from './helpers';
-import { ActivityGuildModel } from '../schema/activity';
-import type { ActivityChildUsersType } from '../schema/activity';
+import { ActivityModel } from '../models/activityModel';
+import type { ActivityType } from '../models/activityModel';
 import type { MessageInfo } from '../types/types';
 
 //Logger to be used in this module
@@ -19,44 +20,6 @@ export const messageActivityEventHandler = async (message: Message) => {
   if (isOwnMessage || isDirectMessage || isBot) return;
 
   updateActivityMessages(message);
-};
-
-/**
- * Updates User Activity Score object and creates one if passed null
- * this function does not interact with a database
- * @param oldRecord old Record from database if null than new record will be constructed
- * @param messageInfo message info object for context reference
- * @returns updated record is returned
- */
-const updateUserActivityRecordMessages = (
-  oldRecord: ActivityChildUsersType | null,
-  messageInfo: MessageInfo,
-): ActivityChildUsersType => {
-  //Create new record if old one does not exists
-  if (!oldRecord) {
-    const record: ActivityChildUsersType = {
-      _id: messageInfo.userId,
-      userName: messageInfo.userName,
-      sendMessages: 1,
-      xp: 10,
-      voiceSeconds: 0,
-    };
-    return record;
-  }
-  //Handle username changes
-  if (oldRecord.userName != messageInfo.userName) {
-    logger.warn(
-      `User changed his name from '${oldRecord.userName}' to ${messageInfo.userName} updating change in database'`,
-    );
-    oldRecord.userName = messageInfo.userName;
-  }
-
-  logger.debug(`Updating in databse user activity for user '${messageInfo.userId}' '${messageInfo.userName}'
-    sendMessages: ${oldRecord.sendMessages} -> ${oldRecord.sendMessages + 1}    
-    xp: ${oldRecord.xp} -> ${oldRecord.xp + 10} `);
-  oldRecord.sendMessages += 1;
-  oldRecord.xp += 10;
-  return oldRecord;
 };
 
 /**
@@ -78,32 +41,28 @@ const updateActivityMessagesNoCheck = async (message: Message) => {
     in guild '${guildId}'  '${guildName}'
     channel '${channelId}' '${channelName}'`);
 
-  //Check if database has record of this guild
-  const queryResult = await ActivityGuildModel.findById(guildId);
+  const query: mongoose.FilterQuery<ActivityType> = {
+    _id: guildId + ':' + userId,
+  };
+  const update: mongoose.UpdateQuery<ActivityType> = {
+    $inc: { sendMessages: 1, xp: 10 },
+  };
+  const options: mongoose.QueryOptions = {
+    runValidators: true,
+    new: true,
+  };
+  const updateResult = await ActivityModel.findOneAndUpdate(query, update, options);
 
-  //Database do not have this guild
-  if (!queryResult) {
-    logger.debug(`No activity record found for guild '${guildId}' '${guildName}' creating new one`);
-    const newRecord = new ActivityGuildModel({
-      _id: guildId,
-      guildName: guildName,
-      users: [updateUserActivityRecordMessages(null, messageInfoObject)],
-    });
-    await newRecord.save();
-    return;
+  if (!updateResult) {
+    await new ActivityModel({
+      _id: guildId + ':' + userId,
+      userId,
+      guildId,
+      userName,
+      sendMessages: 1,
+      xp: 10,
+    }).save();
   }
-
-  //Check if user record is present
-  const userRecord = queryResult.users.find((el) => el._id === userId);
-  if (!userRecord) {
-    logger.debug(`No activity record found for user '${userId}' '${userName}' creating new one`);
-    queryResult.users.push(updateUserActivityRecordMessages(null, messageInfoObject));
-    await queryResult.save();
-    return;
-  }
-
-  updateUserActivityRecordMessages(userRecord, messageInfoObject);
-  await queryResult.save();
 };
 
 interface UserContext {
@@ -203,30 +162,30 @@ type UserActivityOverview = {
   userId: string;
 } & LevelInfo;
 
-export const genearteActivityOverviewForUser = async (guildId: string, userId: string) => {
-  //Perform Databse lookup
-  const queryResult = await ActivityGuildModel.findOne(
-    {
-      $and: [{ _id: guildId }, { 'users._id': userId }],
-    },
-    { 'users.$': 1 },
-  );
+// export const genearteActivityOverviewForUser = async (guildId: string, userId: string) => {
+//   //Perform Databse lookup
+//   const queryResult = await ActivityGuildModel.findOne(
+//     {
+//       $and: [{ _id: guildId }, { 'users._id': userId }],
+//     },
+//     { 'users.$': 1 },
+//   );
 
-  if (!queryResult) {
-    logger.error(`Query for userId: ${userId} in guildId: ${guildId} failed!`);
-    return undefined;
-  }
+//   if (!queryResult) {
+//     logger.error(`Query for userId: ${userId} in guildId: ${guildId} failed!`);
+//     return undefined;
+//   }
 
-  const { userName, xp } = queryResult.users[0];
-  const { currentLevel, levelFill, nextLevelXp } = xpToLevelInfoMapping(xp);
+//   const { userName, xp } = queryResult.users[0];
+//   const { currentLevel, levelFill, nextLevelXp } = xpToLevelInfoMapping(xp);
 
-  const overview: UserActivityOverview = {
-    userName,
-    currentLevel,
-    levelFill,
-    nextLevelXp,
-    userId,
-  };
+//   const overview: UserActivityOverview = {
+//     userName,
+//     currentLevel,
+//     levelFill,
+//     nextLevelXp,
+//     userId,
+//   };
 
-  return overview;
-};
+//   return overview;
+// };

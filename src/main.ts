@@ -3,7 +3,6 @@ import { Intents } from 'discord.js';
 
 import { BotClient } from './client';
 import { readEnv } from './helpers';
-import { genearteActivityOverviewForUser } from './activity';
 
 //Read env variables from .env
 const { enableDebug, mongoPass, mongoUrl, mongoUser } = readEnv();
@@ -33,4 +32,4 @@ BotClient.setIntents(bot_intents);
 const client = BotClient.getClient();
 client.login();
 
-genearteActivityOverviewForUser('792497879175397456', '393123191159128085');
+//genearteActivityOverviewForUser('792497879175397456', '393123191159128085');
