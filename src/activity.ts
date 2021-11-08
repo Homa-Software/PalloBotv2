@@ -5,22 +5,9 @@ import type { Message } from 'discord.js';
 import { retriveMessageInfo } from './helpers';
 import { ActivityModel } from '../models/activityModel';
 import type { ActivityType } from '../models/activityModel';
-import type { MessageInfo } from '../types/types';
 
 //Logger to be used in this module
 const logger = getLogger();
-
-/**
- * Event handler used in events/activity.ts
- * @param message message that triggered event handler
- * @returns Promise<void>
- */
-export const messageActivityEventHandler = async (message: Message) => {
-  const { isOwnMessage, isDirectMessage, isBot } = retriveMessageInfo(message);
-  if (isOwnMessage || isDirectMessage || isBot) return;
-
-  updateActivityMessages(message);
-};
 
 /**
  * Updates and writes to database user activity score, this function does not prevent spam messages
@@ -65,61 +52,63 @@ const updateActivityMessagesNoCheck = async (message: Message) => {
   }
 };
 
-interface UserContext {
-  userId: string;
-  guildId: string;
-  channelId: string;
-  timestamp: number;
-}
-
-const contexes: UserContext[] = [];
-
 /**
- * Updates and writes to database user activity score
+ * Closure that updates and writes to database user activity score
  * @param message message that invoked activity update
  * @returns Promise<void>
  */
-export const updateActivityMessages = async (message: Message) => {
-  const timeout = 2000;
+export const updateActivityMessages = (() => {
+  interface UserContext {
+    userId: string;
+    guildId: string;
+    channelId: string;
+    timestamp: number;
+  }
 
-  const findUserContext = (context: UserContext): UserContext | undefined => {
-    return contexes.find((el) => {
-      const checks: boolean[] = [
-        el.channelId === context.channelId,
-        el.guildId === context.guildId,
-        el.userId === context.userId,
-      ];
+  const contexes: UserContext[] = [];
 
-      return checks.every((el) => el === true);
-    });
-  };
+  return async (message: Message) => {
+    const timeout = 2000;
 
-  const messageInfo = retriveMessageInfo(message);
-  const guildId = messageInfo.guildId ?? '';
-  const { userId, channelId } = messageInfo;
-  const timestamp = new Date().getTime();
+    const findUserContext = (context: UserContext): UserContext | undefined => {
+      return contexes.find((el) => {
+        const checks: boolean[] = [
+          el.channelId === context.channelId,
+          el.guildId === context.guildId,
+          el.userId === context.userId,
+        ];
 
-  const userInteraction: UserContext = { guildId, userId, channelId, timestamp };
+        return checks.every((el) => el === true);
+      });
+    };
 
-  const timeNow = new Date().getTime();
-  const registered = findUserContext(userInteraction);
+    const messageInfo = retriveMessageInfo(message);
+    const guildId = messageInfo.guildId ?? '';
+    const { userId, channelId } = messageInfo;
+    const timestamp = new Date().getTime();
 
-  if (!registered) {
-    contexes.push(userInteraction);
-    logger.info(`Registering and executing activity update`);
+    const userInteraction: UserContext = { guildId, userId, channelId, timestamp };
+
+    const timeNow = new Date().getTime();
+    const registered = findUserContext(userInteraction);
+
+    if (!registered) {
+      contexes.push(userInteraction);
+      logger.info(`Registering and executing activity update`);
+      await updateActivityMessagesNoCheck(message);
+      return;
+    }
+
+    if (timeNow - registered.timestamp < timeout) {
+      logger.info(`Throttling activity update`);
+      return;
+    }
+    logger.info(`Executing activity update`);
+    registered.timestamp = timeNow;
     await updateActivityMessagesNoCheck(message);
     return;
-  }
-
-  if (timeNow - registered.timestamp < timeout) {
-    logger.info(`Throttling activity update`);
-    return;
-  }
-  logger.info(`Executing activity update`);
-  registered.timestamp = timeNow;
-  await updateActivityMessagesNoCheck(message);
-  return;
-};
+  };
+})();
 
 type LevelInfo = {
   currentLevel: number;
@@ -162,30 +151,19 @@ type UserActivityOverview = {
   userId: string;
 } & LevelInfo;
 
-// export const genearteActivityOverviewForUser = async (guildId: string, userId: string) => {
-//   //Perform Databse lookup
-//   const queryResult = await ActivityGuildModel.findOne(
-//     {
-//       $and: [{ _id: guildId }, { 'users._id': userId }],
-//     },
-//     { 'users.$': 1 },
-//   );
+export const getActivityOverviewForUser = async (
+  guildId: string,
+  userId: string,
+): Promise<UserActivityOverview | undefined> => {
+  const queryResult = await ActivityModel.findOne({ _id: guildId + ':' + userId });
 
-//   if (!queryResult) {
-//     logger.error(`Query for userId: ${userId} in guildId: ${guildId} failed!`);
-//     return undefined;
-//   }
+  if (!queryResult) {
+    logger.error(`Query for userId: ${userId} in guildId: ${guildId} failed!`);
+    return undefined;
+  }
 
-//   const { userName, xp } = queryResult.users[0];
-//   const { currentLevel, levelFill, nextLevelXp } = xpToLevelInfoMapping(xp);
+  const { userName, xp } = queryResult;
+  const { currentLevel, levelFill, nextLevelXp } = xpToLevelInfoMapping(xp);
 
-//   const overview: UserActivityOverview = {
-//     userName,
-//     currentLevel,
-//     levelFill,
-//     nextLevelXp,
-//     userId,
-//   };
-
-//   return overview;
-// };
+  return { userName, userId, currentLevel, levelFill, nextLevelXp };
+};
