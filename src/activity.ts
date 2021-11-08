@@ -149,6 +149,7 @@ const xpToLevelInfoMapping = (xp: number): LevelInfo => {
 type UserActivityOverview = {
   userName: string;
   userId: string;
+  sendMessages: number;
 } & LevelInfo;
 
 export const getActivityOverviewForUser = async (
@@ -162,8 +163,8 @@ export const getActivityOverviewForUser = async (
     return undefined;
   }
 
-  const { userName, xp } = queryResult;
+  const { userName, xp, sendMessages } = queryResult;
   const { currentLevel, levelFill, nextLevelXp } = xpToLevelInfoMapping(xp);
 
-  return { userName, userId, currentLevel, levelFill, nextLevelXp };
+  return { userName, userId, currentLevel, levelFill, nextLevelXp, sendMessages };
 };
