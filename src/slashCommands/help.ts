@@ -22,7 +22,7 @@ const helpEventHandler = async (interaction: CommandInteraction) => {
   await interaction.reply({ embeds: [helpEmbed] });
 };
 
-const helpCommand: BotSlashCommand = {
+const helpCommand: BotSlashCommand<SlashCommandBuilder> = {
   data: new SlashCommandBuilder().setName('help').setDescription('Shows help'),
   run: helpEventHandler,
 };

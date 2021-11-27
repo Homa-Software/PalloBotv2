@@ -1,19 +1,56 @@
-import path from 'path';
-import fs from 'fs';
-import { Client, Collection } from 'discord.js';
+import path, { join } from 'path';
+import fs, { statSync, readdirSync } from 'fs';
+import { Client, Collection, Intents } from 'discord.js';
 import { getLogger } from 'log4js';
 import { readEnv } from './helpers';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import db from 'mongoose';
 import type { SlashCommandBuilder } from '@discordjs/builders';
+import { DisTube } from 'distube';
 
 import type { BotSlashCommand, BotEvent, BotNoPrefixCommand } from '../types/types';
+import { reportError } from './errorHandler/sentry';
 
 type CreationParams = {
   token: string;
   clientId: string;
   guildId: string;
+};
+
+const isDirectory = (path: string) => statSync(path).isDirectory();
+const getDirectories = (path: string) =>
+  readdirSync(path)
+    .map((name) => join(path, name))
+    .filter(isDirectory);
+
+const isFile = (path: string) => statSync(path).isFile();
+const getFiles = (path: string) =>
+  readdirSync(path)
+    .map((name) => join(path, name))
+    .filter(isFile);
+
+const getFilesRecursively = (path: string): string[] => {
+  const dirs = getDirectories(path);
+  const files = dirs.flatMap((dir) => getFilesRecursively(dir)); // go through each directory   // map returns a 2d array (array of file arrays) so flatten
+  return files.concat(getFiles(path));
+};
+
+const getCommandFiles = (directory: string): string[] => {
+  return fs.readdirSync(directory).flatMap((file) => {
+    const absolutePath = path.join(directory, file);
+    if (fs.statSync(absolutePath).isDirectory()) {
+      return getCommandFiles(absolutePath);
+    }
+    return file;
+  });
+};
+
+const getFilePathForModules = (dirName: string, file: string) => {
+  if (fs.statSync(`${dirName}/${file}`).isFile()) {
+    return path.resolve(dirName, file);
+  }
+  return file;
 };
 
 /**
@@ -23,19 +60,16 @@ type CreationParams = {
  */
 const loadDataFromModules = async <T>(dirname: string): Promise<T[]> => {
   const logger = getLogger();
-  const dirName = path.resolve(__dirname, dirname);
+  const dirName = path.join('./', dirname);
   logger.info(`Loading modules from directory '${path.relative(path.resolve(__dirname, '..'), dirName)}'`);
-  const commandFiles = fs.readdirSync(dirName).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
-
+  const commandFiles = getFilesRecursively(dirname).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
   const data: T[] = [];
-
   for (const file of commandFiles) {
-    const filePath = path.resolve(dirName, file);
-
+    const filePath = getFilePathForModules(dirName, file);
     //Logger helpers
     const pathOfModule = path.relative(path.resolve(__dirname, '..'), filePath);
     //Importing file as a module
-    const module: any = await import(filePath);
+    const module = await import(filePath);
     //Sanity check if module defines default attribute
     if (Object.keys(module.default).length === 0) {
       logger.error(`Module '${pathOfModule}' could not be loaded beacause it does not define default export'`);
@@ -59,7 +93,7 @@ export class BotClient extends Client {
   private _clientId: string = '';
   private _guildId: string = '';
 
-  public readonly commands = new Collection<string, BotSlashCommand>();
+  public readonly commands = new Collection<string, BotSlashCommand<SlashCommandBuilder>>();
   private events = new Collection<string, BotEvent>();
   private noPrefixCommands = new Collection<string, BotNoPrefixCommand>();
 
@@ -79,6 +113,15 @@ export class BotClient extends Client {
       this.loadSlashCommands();
       this.loadNoPrefixCommands();
     });
+    BotClient.setIntents([Intents.FLAGS.GUILD_VOICE_STATES]);
+  }
+
+  static initializeDistube() {
+    const distube = new DisTube(BotClient.getClient());
+    distube.on('error', (_, error) => {
+      reportError(error);
+    });
+    return distube;
   }
 
   private async initializeMongo() {
@@ -107,7 +150,7 @@ export class BotClient extends Client {
 
     logger.info(`Loading SlashCommands`);
 
-    const commandsData: BotSlashCommand[] = await loadDataFromModules('slashCommands');
+    const commandsData: BotSlashCommand<SlashCommandBuilder>[] = await loadDataFromModules('slashCommands');
     const commands: SlashCommandBuilder[] = [];
     for (const command of commandsData) {
       logger.info(`Registering command '${command.data.name}'`);

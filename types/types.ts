@@ -1,5 +1,6 @@
 import type { CommandInteraction, Message, ClientEvents } from 'discord.js';
 import type { SlashCommandBuilder } from '@discordjs/builders';
+import { SlashCommandOptionsOnlyBuilder, SlashCommandSubcommandGroupBuilder } from '@discordjs/builders';
 
 export type EnvVars = {
   token: string;
@@ -11,8 +12,8 @@ export type EnvVars = {
   mongoUrl: string;
 };
 
-export type BotSlashCommand = {
-  data: SlashCommandBuilder;
+export type BotSlashCommand<T> = {
+  data: T;
   run: (arg0: CommandInteraction) => Promise<void>;
 };
 
